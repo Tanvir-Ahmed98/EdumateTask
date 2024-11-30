@@ -116,7 +116,7 @@ import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Button from 'primevue/button';
-import * as XLSX from 'xlsx';
+
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import 'primeicons/primeicons.css';
@@ -125,7 +125,7 @@ const students = ref([]);
 const selectedRows = ref([]);
 const loading = ref(true);
 const filter = ref({}); // Reactive filters object
-XLSX.set_fs(null);
+
 
 const initFilters = () => {
   filter.value = {
@@ -198,23 +198,21 @@ const clearFilter = () => {
 
 
 // Export to Excel
-const exportExcel = () => {
+const exportExcel = async () => {
+  const { utils, writeFile } = await import('xlsx');
+
   const data = selectedRows.value.map((student) => ({
     'Student ID': student.custom_student_id,
-    'Class Roll': student.class_roll,
-    'Status': student.student?.status,
     'Name': student.student_details?.student_name,
     'Gender': student.student_details?.student_gender,
     'Religion': student.student_details?.student_religion,
-    'Academic Session': student.academicsession?.coresubcategories?.core_subcategory_name,
     'Category': student.categories?.coresubcategories?.core_subcategory_name,
-    'Father\'s Mobile': student.guardian_details?.father_mobile,
-    'Group': student.combination?.academic_class_detail?.groups?.core_subcategory_name
   }));
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
-  XLSX.writeFile(workbook, 'students.xlsx');
+
+  const worksheet = utils.json_to_sheet(data);
+  const workbook = utils.book_new();
+  utils.book_append_sheet(workbook, worksheet, 'Students');
+  writeFile(workbook, 'students.xlsx');
 };
 
 // Export to PDF
