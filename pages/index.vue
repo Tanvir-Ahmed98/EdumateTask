@@ -125,6 +125,7 @@ const students = ref([]);
 const selectedRows = ref([]);
 const loading = ref(true);
 const filter = ref({}); // Reactive filters object
+XLSX.set_fs(null);
 
 const initFilters = () => {
   filter.value = {
