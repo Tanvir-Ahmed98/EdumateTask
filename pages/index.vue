@@ -125,7 +125,7 @@ const students = ref([]);
 const selectedRows = ref([]);
 const loading = ref(true);
 const filter = ref({}); // Reactive filters object
-XLSX.set_fs(null); // Disable cpexcel.js
+
 const initFilters = () => {
   filter.value = {
     global: { value: null, matchMode: FilterMatchMode.CONTAINS },
