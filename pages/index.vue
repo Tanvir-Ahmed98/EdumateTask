@@ -203,10 +203,15 @@ const exportExcel = async () => {
 
   const data = selectedRows.value.map((student) => ({
     'Student ID': student.custom_student_id,
+    'Class Roll': student.class_roll,
+    'Status': student.student?.status,
     'Name': student.student_details?.student_name,
     'Gender': student.student_details?.student_gender,
     'Religion': student.student_details?.student_religion,
+    'Academic Session': student.academicsession?.coresubcategories?.core_subcategory_name,
     'Category': student.categories?.coresubcategories?.core_subcategory_name,
+    'Father\'s Mobile': student.guardian_details?.father_mobile,
+    'Group': student.combination?.academic_class_detail?.groups?.core_subcategory_name
   }));
 
   const worksheet = utils.json_to_sheet(data);
