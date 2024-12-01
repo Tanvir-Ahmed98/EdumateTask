@@ -2,11 +2,12 @@
   <div>
     <h2>Student List</h2>
 
-    <!-- Global Search -->
+    <!-- Global Search and Actions -->
     <div class="container">
       <InputText v-model="filters.global.value" placeholder="Global Search" class="w-1/3" />
-      <div >
+      <div>
         <Button label="Export to Excel" icon="pi pi-file-excel" @click="exportExcel" class="mr-2" />
+
         <Button label="Export to PDF" icon="pi pi-file-pdf" @click="exportPDF" />
       </div>
       <div>
@@ -15,6 +16,18 @@
         </RouterLink>
       </div>
     </div>
+
+    <!-- Column Selection -->
+    <div class="column-selection">
+      <h4>Select Columns to Display</h4>
+      <div>
+        <div v-for="field in fieldOptions" :key="field.value" class="checkbox-field">
+          <Checkbox v-model="selectedFields" :value="field.value" />
+          <label>{{ field.label }}</label>
+        </div>
+      </div>
+    </div>
+
     <!-- DataTable -->
     <DataTable
       v-model:filters="filters"
@@ -23,245 +36,242 @@
       :rows="10"
       :rowsPerPageOptions="[10, 25, 50]"
       :resizableColumns="true"
-      :sortMode="'multiple'"
       :scrollable="true"
       :scrollHeight="'500px'"
       tableStyle="min-width: 70rem"
       selectionMode="multiple"
       v-model:selection="selectedRows"
-      filterDisplay="menu"
-      :globalFilterFields="[
-        'custom_student_id',
-        'class_roll',
-        'student.status',
-        'student_details.student_name',
-        'student_details.student_gender',
-        'student_details.student_religion',
-        'academicsession.coresubcategories.core_subcategory_name',
-        'categories.coresubcategories.core_subcategory_name',
-        'guardian_details.father_mobile',
-        'combination.academic_class_detail.groups.core_subcategory_name'
-      ]"
+      :globalFilterFields="globalFilterFields"
       :loading="loading"
+      filterDisplay="menu"
     >
       <template #header>
         <div class="flex justify-between">
-          <Button type="button" icon="pi pi-filter-slash" label="Clear" outlined @click="clearFilter" />
+          <Button type="button" icon="pi pi-filter-slash" label="Clear Filters" outlined @click="clearFilter" />
         </div>
       </template>
       <template #empty> No students found. </template>
       <template #loading> Loading students data. Please wait. </template>
 
-      <!-- Columns -->
+      <!-- Selection Column -->
       <Column selectionMode="multiple" style="width: 3rem"></Column>
-      <Column field="custom_student_id" header="Student ID" :sortable="true" :filter="true" :filterMatchMode="FilterMatchMode.CONTAINS">
+
+      <!-- Dynamic Columns with Filters -->
+      <Column
+        v-for="field in selectedFields"
+        :key="field"
+        :field="field"
+        :header="getFieldLabel(field)"
+        :sortable="true"
+        :filter="true"
+        :filterPlaceholder="'Search ' + getFieldLabel(field)"
+        :filterMatchMode="FilterMatchMode.CONTAINS"
+      >
+        <!-- Filter Logic -->
         <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search by Student ID" />
-        </template>
-      </Column>
-      <Column field="class_roll" header="Class Roll" :sortable="true" :filter="true" :filterMatchMode="FilterMatchMode.EQUALS">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search by Class Roll" />
-        </template>
-      </Column>
-      <Column field="student.status" header="Status" :sortable="true" :filter="true" :filterMatchMode="FilterMatchMode.STARTS_WITH">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search by Status" />
-        </template>
-      </Column>
-      <Column field="student_details.student_name" header="Name" :sortable="true" :filter="true" :filterMatchMode="FilterMatchMode.CONTAINS">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search by Name" />
-        </template>
-      </Column>
-      <Column field="student_details.student_gender" header="Gender" :sortable="true" :filter="true" :filterMatchMode="FilterMatchMode.EQUALS">
-        <template #filter="{ filterModel }">
-          <Select v-model="filterModel.value" :options="['Male', 'Female', 'Other']" placeholder="Select Gender" />
-        </template>
-      </Column>
-      <Column field="student_details.student_religion" header="Religion" :sortable="true" :filter="true" :filterMatchMode="FilterMatchMode.CONTAINS">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search by Religion" />
-        </template>
-      </Column>
-      <Column field="academicsession.coresubcategories.core_subcategory_name" header="Academic Session" :sortable="true" :filter="true" :filterMatchMode="FilterMatchMode.CONTAINS">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search by Academic Session" />
-        </template>
-      </Column>
-      <Column field="categories.coresubcategories.core_subcategory_name" header="Category" :sortable="true" :filter="true" :filterMatchMode="FilterMatchMode.STARTS_WITH">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search by Category" />
-        </template>
-      </Column>
-      <Column field="guardian_details.father_mobile" header="Father's Mobile" :sortable="true" :filter="true" :filterMatchMode="FilterMatchMode.CONTAINS">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search by Father's Mobile" />
-        </template>
-      </Column>
-      <Column field="combination.academic_class_detail.groups.core_subcategory_name" header="Group" :sortable="true" :filter="true" :filterMatchMode="FilterMatchMode.CONTAINS">
-        <template #filter="{ filterModel }">
-          <InputText v-model="filterModel.value" placeholder="Search by Group" />
+          <InputText v-model="filterModel.value" :placeholder="'Search by ' + getFieldLabel(field)" />
         </template>
       </Column>
     </DataTable>
   </div>
 </template>
 
-<script setup>
-import { ref, onMounted } from 'vue';
-import { FilterMatchMode,FilterOperator } from '@primevue/core/api';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
-import InputText from 'primevue/inputtext';
-import Select from 'primevue/select';
-import Button from 'primevue/button';
 
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-import 'primeicons/primeicons.css';
-import { RouterLink } from 'vue-router';
+
+
+
+<script setup>
+import { ref, onMounted, computed } from "vue";
+import { FilterMatchMode } from "@primevue/core/api";
+import DataTable from "primevue/datatable";
+import Column from "primevue/column";
+import InputText from "primevue/inputtext";
+import Button from "primevue/button";
+import Checkbox from "primevue/checkbox";
+
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import "primeicons/primeicons.css";
+import { RouterLink } from "vue-router";
+
+// Reactive data
 const students = ref([]);
 const selectedRows = ref([]);
 const loading = ref(true);
-const filter = ref({}); // Reactive filters object
 
+// Column options for dynamic display
+const fieldOptions = ref([
+  { label: "Student ID", value: "custom_student_id" },
+  { label: "Class Roll", value: "class_roll" },
+  { label: "Status", value: "student.status" },
+  { label: "Name", value: "student_details.student_name" },
+  { label: "Gender", value: "student_details.student_gender" },
+  { label: "Religion", value: "student_details.student_religion" },
+  { label: "Academic Session", value: "academicsession.coresubcategories.core_subcategory_name" },
+  { label: "Category", value: "categories.coresubcategories.core_subcategory_name" },
+  { label: "Father's Mobile", value: "guardian_details.father_mobile" },
+  { label: "Group", value: "combination.academic_class_detail.groups.core_subcategory_name" },
+]);
 
-const initFilters = () => {
-  filter.value = {
-    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-    student_id: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    name: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
-    class_roll: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
-    'country.name': { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.STARTS_WITH }] },
-    balance: { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
-    verified: { value: null, matchMode: FilterMatchMode.EQUALS },
-    status: { operator: FilterOperator.OR, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
-    activity: { value: [0, 100], matchMode: FilterMatchMode.BETWEEN },
-  };
-};
+// Default: All fields selected
+const selectedFields = ref(fieldOptions.value.map((field) => field.value));
 
-// Initialize filters on component load
-initFilters();
+// Filters for columns and global
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  custom_student_id: { value: null, matchMode: FilterMatchMode.CONTAINS },
-  class_roll: { value: null, matchMode: FilterMatchMode.EQUALS },
-  'student.status': { value: null, matchMode: FilterMatchMode.STARTS_WITH },
-  'student_details.student_name': { value: null, matchMode: FilterMatchMode.CONTAINS },
-  'student_details.student_gender': { value: null, matchMode: FilterMatchMode.EQUALS },
-  'student_details.student_religion': { value: null, matchMode: FilterMatchMode.CONTAINS },
-  'academicsession.coresubcategories.core_subcategory_name': { value: null, matchMode: FilterMatchMode.CONTAINS },
-  'categories.coresubcategories.core_subcategory_name': { value: null, matchMode: FilterMatchMode.STARTS_WITH },
-  'guardian_details.father_mobile': { value: null, matchMode: FilterMatchMode.CONTAINS },
-  'combination.academic_class_detail.groups.core_subcategory_name': { value: null, matchMode: FilterMatchMode.CONTAINS }
+  // Make sure each filter has constraints initialized
+  custom_student_id: { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  class_roll: { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
+  "student_details.student_name": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  "student_details.student_gender": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
+  "student_details.student_religion": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  "academicsession.coresubcategories.core_subcategory_name": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  "categories.coresubcategories.core_subcategory_name": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  "guardian_details.father_mobile": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  "combination.academic_class_detail.groups.core_subcategory_name": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
 });
+
+const globalFilterFields = computed(() => selectedFields.value);
 
 // Fetch student data
 const fetchStudents = async () => {
   try {
-    const response = await fetch('https://wmer3.wiremockapi.cloud/api/v1/student-list');
+    const response = await fetch("https://wmer3.wiremockapi.cloud/api/v1/student-list");
+    if (!response.ok) throw new Error("Failed to fetch data");
     students.value = await response.json();
-    loading.value = false;
   } catch (error) {
-    console.error('Failed to fetch students:', error.message);
+    console.error("Failed to fetch students:", error.message);
+  } finally {
     loading.value = false;
   }
+};
+
+// Get label for a given field
+const getFieldLabel = (fieldValue) => {
+  const field = fieldOptions.value.find((f) => f.value === fieldValue);
+  return field ? field.label : fieldValue;
 };
 
 // Clear all filters
 const clearFilter = () => {
-  // Iterate over all existing filters and reset their value
-  Object.keys(filters.value).forEach((key) => {
-    if (filters.value[key]?.constraints) {
-      // For filters with constraints (e.g., AND/OR logic)
-      filters.value[key].constraints.forEach((constraint) => {
-        constraint.value = null;
+  // Reset the filters object to its initial state
+  filters.value = {
+    global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+    custom_student_id: { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+    class_roll: { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
+    "student_details.student_name": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+    "student_details.student_gender": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] },
+    "student_details.student_religion": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+    "academicsession.coresubcategories.core_subcategory_name": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+    "categories.coresubcategories.core_subcategory_name": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+    "guardian_details.father_mobile": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+    "combination.academic_class_detail.groups.core_subcategory_name": { operator: "AND", constraints: [{ value: null, matchMode: FilterMatchMode.CONTAINS }] },
+  };
+};
+
+
+// Export selected data to Excel
+const exportExcel = async () => {
+  try {
+    const { utils, writeFile } = await import("xlsx");
+
+    // Prepare the data for Excel based on selected rows or all visible rows
+    const data = (selectedRows.value.length > 0 ? selectedRows.value : students.value).map((student) => {
+      const row = {};
+      selectedFields.value.forEach((field) => {
+        const fieldParts = field.split(".");
+        let value = student;
+        fieldParts.forEach((part) => {
+          value = value ? value[part] : null;
+        });
+        row[getFieldLabel(field)] = value || ""; // Use column label as header
       });
-    } else {
-      // For filters without constraints
-      filters.value[key].value = null;
+      return row;
+    });
+
+    if (data.length === 0) {
+      console.warn("No data available for export.");
+      return;
     }
 
-    // Reset matchMode if required (optional)
-    filters.value[key].matchMode = filters.value[key].matchMode || FilterMatchMode.CONTAINS;
-  });
+    // Create a worksheet and workbook
+    const worksheet = utils.json_to_sheet(data);
+    const workbook = utils.book_new();
+    utils.book_append_sheet(workbook, worksheet, "Students");
 
-  // Reset global filter explicitly
-  if (filters.value.global) {
-    filters.value.global.value = null;
-    filters.value.global.matchMode = FilterMatchMode.CONTAINS;
+    // Save the workbook as an Excel file
+    writeFile(workbook, "students.xlsx");
+
+    console.log("Excel report generated successfully.");
+  } catch (error) {
+    console.error("Failed to export to Excel:", error.message);
   }
-
-  console.log('Filters cleared:', filters.value); // Debugging (optional)
 };
 
 
-// Export to Excel
-const exportExcel = async () => {
-  const { utils, writeFile } = await import('xlsx');
-
-  const data = selectedRows.value.map((student) => ({
-    'Student ID': student.custom_student_id,
-    'Class Roll': student.class_roll,
-    'Status': student.student?.status,
-    'Name': student.student_details?.student_name,
-    'Gender': student.student_details?.student_gender,
-    'Religion': student.student_details?.student_religion,
-    'Academic Session': student.academicsession?.coresubcategories?.core_subcategory_name,
-    'Category': student.categories?.coresubcategories?.core_subcategory_name,
-    'Father\'s Mobile': student.guardian_details?.father_mobile,
-    'Group': student.combination?.academic_class_detail?.groups?.core_subcategory_name
-  }));
-
-  const worksheet = utils.json_to_sheet(data);
-  const workbook = utils.book_new();
-  utils.book_append_sheet(workbook, worksheet, 'Students');
-  writeFile(workbook, 'students.xlsx');
-};
-
-// Export to PDF
+// Export selected data to PDF
 const exportPDF = () => {
   const doc = new jsPDF();
-  const tableColumns = [
-    'Student ID',
-    'Class Roll',
-    'Status',
-    'Name',
-    'Gender',
-    'Religion',
-    'Academic Session',
-    'Category',
-    'Father\'s Mobile',
-    'Group'
-  ];
-  const tableRows = selectedRows.value.map((student) => [
-    student.custom_student_id,
-    student.class_roll,
-    student.student?.status,
-    student.student_details?.student_name,
-    student.student_details?.student_gender,
-    student.student_details?.student_religion,
-    student.academicsession?.coresubcategories?.core_subcategory_name,
-    student.categories?.coresubcategories?.core_subcategory_name,
-    student.guardian_details?.father_mobile,
-    student.combination?.academic_class_detail?.groups?.core_subcategory_name
-  ]);
+  const tableColumns = selectedFields.value.map(getFieldLabel);
+  const tableRows = selectedRows.value.map((student) => {
+    return selectedFields.value.map((field) => {
+      const fieldParts = field.split(".");
+      let value = student;
+      fieldParts.forEach((part) => {
+        value = value ? value[part] : null;
+      });
+      return value;
+    });
+  });
+
+  // If no rows are selected, export all visible rows
+  if (tableRows.length === 0) {
+    students.value.forEach((student) => {
+      const row = selectedFields.value.map((field) => {
+        const fieldParts = field.split(".");
+        let value = student;
+        fieldParts.forEach((part) => {
+          value = value ? value[part] : null;
+        });
+        return value;
+      });
+      tableRows.push(row);
+    });
+  }
+
   doc.autoTable({
     head: [tableColumns],
     body: tableRows,
-    styles: { fontSize: 8, halign: 'center' },
-    headStyles: { fillColor: [22, 160, 133] }
+    styles: { fontSize: 8, halign: "center" },
+    headStyles: { fillColor: [22, 160, 133] },
   });
-  doc.save('students.pdf');
+  doc.save("students.pdf");
 };
 
+// Fetch data on component mount
 onMounted(fetchStudents);
 </script>
+
+
+
+
+
+
+
+
 <style scoped>
-.container{
-  display:flex;
-  flex-direction: row;
-  gap:5px;
+.container {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.column-selection {
+  margin-bottom: 1rem;
+}
+
+.checkbox-field {
+  display: inline-block;
+  margin-right: 1rem;
 }
 </style>
